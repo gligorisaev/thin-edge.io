@@ -1020,22 +1020,16 @@ This is a self-signed certificate.
 To use a certificate signed by your Certificate Authority,
 see the reference guide of <a href="tutorials/../references/tedge-cert.html"><code>tedge cert</code></a>.</p>
 <h2 id="register-the-device-on-aws-iot-hub"><a class="header" href="#register-the-device-on-aws-iot-hub">Register the device on AWS IoT Hub</a></h2>
-<p>For a device to be trusted by AWS, one needs to add the self-signed certificate to the AWS IoT Core (generated when
-using the <code>tedge cert create</code> command). In the AWS IoT Core, navigate to &quot;Security&quot;-&gt;&quot;Certificates&quot; then click on &quot;Add
-certificate&quot;-&gt;&quot;Register certificates&quot;. Select the option &quot;CA is not registered with AWS IoT&quot; as we are using a self
-signed certificate. Click &quot;Upload&quot; and select either the device certificate or certificate signing request, then click
-&quot;Register&quot;. If you navigate to &quot;Security&quot;-&gt;&quot;Certificates&quot; you should now see the certificate listed. Click on the new
-certificate, then under the &quot;Actions&quot; dropdown click &quot;Activate&quot;.</p>
-<p>A policy needs to be attached to the device certificate in AWS IoT Core. AWS IoT Core policies determine what an
+<p>For a device to be trusted by AWS, one needs a device certificate and the <code>tedge cert create</code> command is the simplest way to get one.
+Also a policy needs to be attached to the device certificate in AWS IoT Core. AWS IoT Core policies determine what an
 authenticated identity can do (here the authenticated identity is the device being connected). More info on AWS IoT Core
 policies can be found <a href="https://docs.aws.amazon.com/iot/latest/developerguide/iot-policies.html">here</a>.</p>
-<p>An example policy template for connecting a device running thin-edge can be found <a href="tutorials/./aws-example-policy.json">here</a>.
-To create a new policy, head over to the AWS IoT Core and navigate to &quot;Security&quot;-&gt;&quot;Policies&quot; then click &quot;Create policy&quot;.
-Give the policy a name, then under &quot;Policy document&quot; click &quot;JSON&quot;, paste in the entire contents of the example policy
-and click &quot;Create&quot;. Be sure to replace <code>&lt;region&gt;</code>, <code>&lt;account-id&gt;</code>, etc. with correct values for your tenant.</p>
-<p>The final step is to attach the policy to the certificate. Navigate to &quot;Security&quot;-&gt;&quot;Certificates&quot;
-and click on the certificate that was uploaded previously. Click on &quot;Attach policies&quot; then select the policy that you
-created and click &quot;Attach policies&quot;.</p>
+<p>To create a new policy, head over to the AWS IoT Core and navigate to <em><strong>Security -&gt; Policies -&gt; Create policy -&gt; Policy properties -&gt; Policy name -&gt; Enter the name of your policy (e.g.tedge)</strong></em></p>
+<p>On the Policy statements tab click on <em><strong>JSON</strong></em> and enter the policy in the <em><strong>Policy document</strong></em> (an example policy can be found <a href="tutorials/./aws-example-policy.json">here</a>) then click <em><strong>Create</strong></em></p>
+<p>In the AWS IoT Core, navigate to <em><strong>Manage -&gt; All devices -&gt; Things -&gt; Create things -&gt; Create Single thing -&gt; Next</strong></em>. Enter the Thing name which can be obtained from the device with: <code>tedge config get device.id</code></p>
+<p>In the Device Shadow section which allows connected devices to sync states with AWS choose <em><strong>Unnamed shadow (classic)</strong></em> and click <em><strong>Next</strong></em> and <em><strong>Configure device certificate - optional</strong></em> page opens.</p>
+<p>At <em><strong>Device certificate</strong></em> choose <em><strong>Use my certificate -&gt; CA is not registered with AWS IoT</strong></em> then <em><strong>Choose file</strong></em> and select your tedge-certificate.pem file, click on <em><strong>Open -&gt; Next</strong></em>.</p>
+<p>The last step needed is to attach previously created policy to your certificate, <em><strong>Attach policies to certificate -optional</strong></em> -&gt; Select your created policy <em><strong>-&gt; Create thing</strong></em>.</p>
 <h2 id="configure-the-device-2"><a class="header" href="#configure-the-device-2">Configure the device</a></h2>
 <p>To connect the device to the AWS IoT Hub, one needs to set the URL of the IoT Hub and the root certificate of the IoT
 Hub as below.</p>
@@ -4556,6 +4550,21 @@ In case of child device <code>&lt;device-name&gt;_&lt;child-id&gt;_&lt;service-n
 <blockquote>
 <p>Note: <code>102</code> is the <code>smartrest</code> template number for the service monitoring message.</p>
 </blockquote>
+<h2 id="configuring-the-default-service-type"><a class="header" href="#configuring-the-default-service-type">Configuring the default service type</a></h2>
+<p>The <code>default service type</code> can be configured using the <code>tedge</code> cli.</p>
+<p>The example below shows how one can set the default service type to <code>systemd</code>.</p>
+<pre><code>tedge config set service.type systemd
+
+</code></pre>
+<blockquote>
+<p>Note: When the <code>service type</code> was not sent with the <code>health status</code> message, then the configured default value will be used by
+the mapper while translating the <code>health status</code> message to <code>service status</code> message.</p>
+</blockquote>
+<p>To clear the configured default service type one can use the command below.
+This will set the <code>service.type</code> to <code>service</code>.</p>
+<pre><code>tedge config unset service.type
+
+</code></pre>
 <h1 id="references-2"><a class="header" href="#references-2">References</a></h1>
 <p>More info about the service monitoring can be found in the below link</p>
 <p><a href="https://cumulocity.com/guides/reference/smartrest-two/#service-creation-102">Service monitoring Cumulocity IoT</a></p>
@@ -6925,49 +6934,314 @@ Alternatively, you can use <code>cargo</code> to build and run executable in a s
 <li><a href="references/./thin-edge-config-files.html">Thin-edge.io configuration files</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-tedge-command"><a class="header" href="#the-tedge-command">The <code>tedge</code> command</a></h1>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge 0.9.0
+tedge is the cli tool for thin-edge.io
+
+USAGE:
+    tedge [OPTIONS] [SUBCOMMAND]
+
+OPTIONS:
+        --config-dir &lt;CONFIG_DIR&gt;    [default: /etc/tedge]
+    -h, --help                       Print help information
+        --init                       Initialize the tedge
+    -V, --version                    Print version information
+
+SUBCOMMANDS:
+    cert          Create and manage device certificate
+    config        Configure Thin Edge
+    connect       Connect to connector provider
+    disconnect    Remove bridge connection for a provider
+    help          Print this message or the help of the given subcommand(s)
+    mqtt          Publish a message on a topic and subscribe a topic
+    reconnect     Reconnect command, calls disconnect followed by connect
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-tedge-config-command"><a class="header" href="#the-tedge-config-command">The <code>tedge config</code> command</a></h1>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-config 
+Configure Thin Edge
+
+USAGE:
+    tedge config &lt;SUBCOMMAND&gt;
+
+OPTIONS:
+    -h, --help    Print help information
+
+SUBCOMMANDS:
+    get      Get the value of the provided configuration key
+    help     Print this message or the help of the given subcommand(s)
+    list     Print the configuration keys and their values
+    set      Set or update the provided configuration key with the given value
+    unset    Unset the provided configuration key
+</code></pre>
 <h2 id="get"><a class="header" href="#get">Get</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-config-get 
+Get the value of the provided configuration key
+
+USAGE:
+    tedge config get &lt;KEY&gt;
+
+ARGS:
+    &lt;KEY&gt;    Configuration key. Run `tedge config list --doc` for available keys
+
+OPTIONS:
+    -h, --help    Print help information
+</code></pre>
 <h2 id="set"><a class="header" href="#set">Set</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-config-set 
+Set or update the provided configuration key with the given value
+
+USAGE:
+    tedge config set &lt;KEY&gt; &lt;VALUE&gt;
+
+ARGS:
+    &lt;KEY&gt;      Configuration key. Run `tedge config list --doc` for available keys
+    &lt;VALUE&gt;    Configuration value
+
+OPTIONS:
+    -h, --help    Print help information
+</code></pre>
 <h2 id="list-2"><a class="header" href="#list-2">List</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-config-list 
+Print the configuration keys and their values
+
+USAGE:
+    tedge config list [OPTIONS]
+
+OPTIONS:
+        --all     Prints all the configuration keys, even those without a configured value
+        --doc     Prints all keys and descriptions with example values
+    -h, --help    Print help information
+</code></pre>
 <h2 id="unset"><a class="header" href="#unset">Unset</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-config-unset 
+Unset the provided configuration key
+
+USAGE:
+    tedge config unset &lt;KEY&gt;
+
+ARGS:
+    &lt;KEY&gt;    Configuration key. Run `tedge config list --doc` for available keys
+
+OPTIONS:
+    -h, --help    Print help information
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-tedge-cert-command"><a class="header" href="#the-tedge-cert-command">The <code>tedge cert</code> command</a></h1>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-cert 
+Create and manage device certificate
+
+USAGE:
+    tedge cert &lt;SUBCOMMAND&gt;
+
+OPTIONS:
+    -h, --help    Print help information
+
+SUBCOMMANDS:
+    create    Create a self-signed device certificate
+    help      Print this message or the help of the given subcommand(s)
+    remove    Remove the device certificate
+    show      Show the device certificate, if any
+    upload    Upload root certificate
+</code></pre>
 <h2 id="create"><a class="header" href="#create">Create</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-cert-create 
+Create a self-signed device certificate
+
+USAGE:
+    tedge cert create --device-id &lt;ID&gt;
+
+OPTIONS:
+        --device-id &lt;ID&gt;    The device identifier to be used as the common name for the certificate
+    -h, --help              Print help information
+</code></pre>
 <h2 id="show"><a class="header" href="#show">Show</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-cert-show 
+Show the device certificate, if any
+
+USAGE:
+    tedge cert show
+
+OPTIONS:
+    -h, --help    Print help information
+</code></pre>
 <h2 id="remove-2"><a class="header" href="#remove-2">Remove</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-cert-remove 
+Remove the device certificate
+
+USAGE:
+    tedge cert remove
+
+OPTIONS:
+    -h, --help    Print help information
+</code></pre>
 <h2 id="upload"><a class="header" href="#upload">Upload</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-cert-upload 
+Upload root certificate
+
+USAGE:
+    tedge cert upload &lt;SUBCOMMAND&gt;
+
+OPTIONS:
+    -h, --help    Print help information
+
+SUBCOMMANDS:
+    c8y     Upload root certificate to Cumulocity
+    help    Print this message or the help of the given subcommand(s)
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-tedge-connect-command"><a class="header" href="#the-tedge-connect-command">The <code>tedge connect</code> command</a></h1>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-connect 
+Connect to connector provider
+
+USAGE:
+    tedge connect &lt;SUBCOMMAND&gt;
+
+OPTIONS:
+    -h, --help    Print help information
+
+SUBCOMMANDS:
+    aws     Create connection to AWS
+    az      Create connection to Azure
+    c8y     Create connection to Cumulocity
+    help    Print this message or the help of the given subcommand(s)
+</code></pre>
 <h2 id="aws"><a class="header" href="#aws">AWS</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-connect-aws 
+Create connection to AWS
+
+The command will create config and start edge relay from the device to AWS instance
+
+USAGE:
+    tedge connect aws [OPTIONS]
+
+OPTIONS:
+    -h, --help
+            Print help information
+
+        --test
+            Test connection to AWS
+</code></pre>
 <h2 id="azure-1"><a class="header" href="#azure-1">Azure</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-connect-az 
+Create connection to Azure
+
+The command will create config and start edge relay from the device to az instance
+
+USAGE:
+    tedge connect az [OPTIONS]
+
+OPTIONS:
+    -h, --help
+            Print help information
+
+        --test
+            Test connection to Azure
+</code></pre>
 <h2 id="cumulocity-1"><a class="header" href="#cumulocity-1">Cumulocity</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-connect-c8y 
+Create connection to Cumulocity
+
+The command will create config and start edge relay from the device to c8y instance
+
+USAGE:
+    tedge connect c8y [OPTIONS]
+
+OPTIONS:
+    -h, --help
+            Print help information
+
+        --test
+            Test connection to Cumulocity
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-tedge-disconnect-command"><a class="header" href="#the-tedge-disconnect-command">The <code>tedge disconnect</code> command</a></h1>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-disconnect 
+Remove bridge connection for a provider
+
+USAGE:
+    tedge disconnect &lt;SUBCOMMAND&gt;
+
+OPTIONS:
+    -h, --help    Print help information
+
+SUBCOMMANDS:
+    aws     Remove bridge connection to AWS
+    az      Remove bridge connection to Azure
+    c8y     Remove bridge connection to Cumulocity
+    help    Print this message or the help of the given subcommand(s)
+</code></pre>
 <h2 id="aws-1"><a class="header" href="#aws-1">AWS</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-disconnect-aws 
+Remove bridge connection to AWS
+
+USAGE:
+    tedge disconnect aws
+
+OPTIONS:
+    -h, --help    Print help information
+</code></pre>
 <h2 id="azure-2"><a class="header" href="#azure-2">Azure</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-disconnect-az 
+Remove bridge connection to Azure
+
+USAGE:
+    tedge disconnect az
+
+OPTIONS:
+    -h, --help    Print help information
+</code></pre>
 <h2 id="cumulocity-2"><a class="header" href="#cumulocity-2">Cumulocity</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-disconnect-c8y 
+Remove bridge connection to Cumulocity
+
+USAGE:
+    tedge disconnect c8y
+
+OPTIONS:
+    -h, --help    Print help information
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="the-tedge-mqtt-command"><a class="header" href="#the-tedge-mqtt-command">The <code>tedge mqtt</code> command</a></h1>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-mqtt 
+Publish a message on a topic and subscribe a topic
+
+USAGE:
+    tedge mqtt &lt;SUBCOMMAND&gt;
+
+OPTIONS:
+    -h, --help    Print help information
+
+SUBCOMMANDS:
+    help    Print this message or the help of the given subcommand(s)
+    pub     Publish a MQTT message on a topic
+    sub     Subscribe a MQTT topic
+</code></pre>
 <h2 id="pub"><a class="header" href="#pub">Pub</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-mqtt-pub 
+Publish a MQTT message on a topic
+
+USAGE:
+    tedge mqtt pub [OPTIONS] &lt;TOPIC&gt; &lt;MESSAGE&gt;
+
+ARGS:
+    &lt;TOPIC&gt;      Topic to publish
+    &lt;MESSAGE&gt;    Message to publish
+
+OPTIONS:
+    -h, --help         Print help information
+    -q, --qos &lt;QOS&gt;    QoS level (0, 1, 2) [default: 0]
+    -r, --retain       Retain flag
+</code></pre>
 <h2 id="sub"><a class="header" href="#sub">Sub</a></h2>
-<pre><code class="language-console"></code></pre>
+<pre><code class="language-console">tedge-mqtt-sub 
+Subscribe a MQTT topic
+
+USAGE:
+    tedge mqtt sub [OPTIONS] &lt;TOPIC&gt;
+
+ARGS:
+    &lt;TOPIC&gt;    Topic to subscribe to
+
+OPTIONS:
+    -h, --help         Print help information
+        --no-topic     Avoid printing the message topics on the console
+    -q, --qos &lt;QOS&gt;    QoS level (0, 1, 2) [default: 0]
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="thin-edge-config-files"><a class="header" href="#thin-edge-config-files">Thin-edge config files</a></h1>
 <p>Thin-edge.io requires config files for its operation. The <code>tedge --init</code> option is used to create
 the base directory and other directories inside the base directory with appropriate user and permissions.
