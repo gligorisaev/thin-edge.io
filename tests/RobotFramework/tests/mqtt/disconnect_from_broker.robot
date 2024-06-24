@@ -12,7 +12,7 @@ Test Tags      theme:mqtt
 
 *** Test Cases ***
 
-Publish Connection Closed after publish and no error message 
+Publish Connection Closed after publish and no error message
     [Documentation]    Tests that the connection to the MQTT broker is closed after publishing.
     Execute Command    /setup/bootstrap.sh
     Execute Command    tedge mqtt pub test/topic Hello
@@ -40,7 +40,7 @@ Subscribe Connection Closed On Interruption
 Stop subscription on SIGINT even when broker is not available
     Execute Command    /setup/bootstrap.sh
     Execute Command    sudo systemctl stop mosquitto
-    ${output}=     Execute Command    cmd=timeout --signal=SIGINT 2 tedge mqtt sub '#'    timeout=5    stderr=${True}    stdout=${False}    ignore_exit_code=${True} 
+    ${output}=     Execute Command    cmd=timeout --signal=SIGINT 2 tedge mqtt sub '#'    timeout=5    stderr=${True}    stdout=${False}    ignore_exit_code=${True}
     Should Contain    ${output}    Connection refused
 
 
