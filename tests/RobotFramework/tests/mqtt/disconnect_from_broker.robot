@@ -12,7 +12,7 @@ Test Tags      theme:mqtt
 
 *** Test Cases ***
 
-Publish Connection Closed after publish and no error message
+Publish Connection Closed after publish
     [Documentation]    Tests that the connection to the MQTT broker is closed after publishing.
     Execute Command    /setup/bootstrap.sh
     Execute Command    tedge mqtt pub test/topic Hello
